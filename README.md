@@ -61,7 +61,7 @@ This avoids expensive CTE-heavy joins in the hot search path and improves compat
 ## Quick Start
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 ```
