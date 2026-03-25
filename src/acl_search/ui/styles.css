@@ -1,0 +1,386 @@
+:root {
+  --bg: #0f131a;
+  --panel: #151c26;
+  --panel-soft: #10161f;
+  --line: rgba(151, 173, 205, 0.22);
+  --text: #e8edf5;
+  --muted: #9eb1cc;
+  --accent: #34d7c6;
+  --accent-ink: #041915;
+  --danger: #ff8d8d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: radial-gradient(circle at 12% 8%, #1c2736 0, transparent 42%),
+    radial-gradient(circle at 82% 16%, #23353a 0, transparent 38%),
+    linear-gradient(145deg, #0d1218, #101923 55%, #0b1118);
+  color: var(--text);
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.bg-glow {
+  position: fixed;
+  z-index: -1;
+  filter: blur(44px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.bg-glow-a {
+  width: 220px;
+  height: 220px;
+  top: 10%;
+  right: 10%;
+  background: #2cc9bc;
+}
+
+.bg-glow-b {
+  width: 260px;
+  height: 260px;
+  bottom: 6%;
+  left: 8%;
+  background: #4f6de7;
+}
+
+.layout {
+  width: min(1200px, calc(100% - 2.5rem));
+  margin: 2rem auto 4rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1.1fr 1.5fr;
+  grid-template-areas:
+    "hero hero"
+    "identity ingest"
+    "control search"
+    "results results"
+    "events events";
+}
+
+.hero {
+  grid-area: hero;
+  padding: 1.75rem 1.25rem 1.2rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.eyebrow {
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-size: 0.72rem;
+  margin: 0 0 0.75rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 3.5vw, 3.2rem);
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+.subtitle {
+  max-width: 70ch;
+  color: var(--muted);
+  margin: 0.75rem 0 0;
+  line-height: 1.5;
+}
+
+.identity,
+.workspace,
+.results,
+.events {
+  border: 1px solid var(--line);
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.03), transparent 55%), var(--panel);
+  border-radius: 0.95rem;
+  padding: 1rem;
+  box-shadow: 0 20px 48px rgba(6, 8, 12, 0.35);
+}
+
+.identity {
+  grid-area: identity;
+}
+
+#ingest-panel {
+  grid-area: ingest;
+}
+
+#control-panel {
+  grid-area: control;
+}
+
+#search-panel {
+  grid-area: search;
+}
+
+#results-panel {
+  grid-area: results;
+}
+
+#events-panel {
+  grid-area: events;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.helper {
+  margin: 0.45rem 0 0.95rem;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+label {
+  display: block;
+  font-size: 0.88rem;
+  margin-bottom: 0.72rem;
+  color: #d5dfeb;
+}
+
+input,
+textarea {
+  width: 100%;
+  margin-top: 0.38rem;
+  border: 1px solid rgba(151, 173, 205, 0.32);
+  background: var(--panel-soft);
+  border-radius: 0.58rem;
+  color: var(--text);
+  font: inherit;
+  padding: 0.7rem 0.72rem;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 74px;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(52, 215, 198, 0.22);
+  outline: none;
+}
+
+code {
+  font-family: "IBM Plex Mono", monospace;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.12rem 0.36rem;
+  border-radius: 0.26rem;
+}
+
+.split {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.35rem 0 0.85rem;
+}
+
+.checkbox-row input {
+  width: auto;
+  margin: 0;
+}
+
+.checkbox-inline {
+  align-self: end;
+  padding-bottom: 0.35rem;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.identity-save-status {
+  margin: 0.7rem 0 0;
+  padding: 0.5rem 0.64rem;
+  border-radius: 0.52rem;
+  border: 1px solid rgba(151, 173, 205, 0.24);
+  background: rgba(16, 22, 31, 0.66);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.identity-save-status.is-saved {
+  color: #c4f6ef;
+  border-color: rgba(52, 215, 198, 0.45);
+  background: rgba(52, 215, 198, 0.12);
+}
+
+.btn {
+  border: none;
+  border-radius: 0.62rem;
+  padding: 0.62rem 0.95rem;
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transform: translateY(0);
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 10px 24px rgba(52, 215, 198, 0.32);
+}
+
+.btn-muted {
+  background: rgba(158, 177, 204, 0.2);
+  color: var(--text);
+}
+
+.control-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.result-meta {
+  margin: 0.6rem 0 0.95rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.result-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.result-item {
+  padding: 0.82rem;
+  border: 1px solid rgba(151, 173, 205, 0.2);
+  border-radius: 0.66rem;
+  background: rgba(16, 22, 31, 0.65);
+  animation: riseIn 220ms ease both;
+}
+
+.result-item strong {
+  font-size: 0.95rem;
+}
+
+.result-item p {
+  margin: 0.48rem 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.result-meta-inline {
+  font-family: "IBM Plex Mono", monospace;
+  color: #cbdae9;
+  font-size: 0.8rem;
+}
+
+#event-log {
+  margin: 0;
+  width: 100%;
+  min-height: 170px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 0.8rem;
+  border-radius: 0.64rem;
+  border: 1px solid rgba(151, 173, 205, 0.24);
+  background: rgba(8, 11, 17, 0.66);
+  color: #cae2f5;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.77rem;
+  line-height: 1.45;
+}
+
+.log-error {
+  color: var(--danger);
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: fadeUp 460ms ease forwards;
+}
+
+.reveal:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.reveal:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.reveal:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.reveal:nth-child(5) {
+  animation-delay: 220ms;
+}
+
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 980px) {
+  .layout {
+    width: min(1100px, calc(100% - 1rem));
+    margin-top: 1rem;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hero"
+      "identity"
+      "ingest"
+      "search"
+      "control"
+      "results"
+      "events";
+  }
+
+  .split,
+  .control-grid {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    line-height: 1.05;
+  }
+}

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     db_pool_min_size: int = 2
     db_pool_max_size: int = 20
     db_pool_max_idle_seconds: int = 60
+    enable_demo_embeddings: bool = False
 
     model_config = SettingsConfigDict(
         env_prefix="ACL_SEARCH_",

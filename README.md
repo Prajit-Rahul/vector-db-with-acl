@@ -1,308 +1,178 @@
-# ACL-Aware Semantic Search Backend
+# ACL-Aware Semantic Search (UI + End-to-End)
 
-Production-grade Python backend for tenant-isolated, ACL-aware semantic search on PostgreSQL + pgvector.
+Production-ready backend for tenant-isolated, ACL-aware semantic retrieval on PostgreSQL + pgvector, now with a built-in web UI for end-to-end operation and verification.
 
-## Overview
+## What You Get in This Branch
 
-This service ensures users can only semantic-search chunks they are authorized to access.
-Authorization is enforced inside the SQL search query, not as post-filtering in application code.
+- Secure API with tenant + ACL enforcement in SQL (`WHERE EXISTS` pre-filter pattern).
+- Built-in UI served by FastAPI at `/`.
+- End-to-end demo scripts:
+  - initialize schema/indexes
+  - seed demo tenant/users/groups/document/chunks
+- Docker-based local stack (`db` + `api`) for quick startup.
 
-## Recent Architecture Update
+## Security Guarantees
 
-Search authorization was optimized to use tenant pre-filtering plus `WHERE EXISTS` ACL checks against `chunk_acl_groups`.
+- Authenticated identity is authoritative (`x-authenticated-user-id`, `x-authenticated-tenant-id` in dev).
+- Payload user identity is not trusted for scope.
+- Tenant isolation is enforced in every critical query path.
+- ACL checks are in the same SQL statement as vector similarity search.
+- All SQL uses bound parameters (no dynamic SQL concatenation).
 
-Current secure search pattern:
-- Resolve requester groups once in service (`getUserContext`).
-- Pass `group_ids` into repository as a bound SQL parameter.
-- Execute vector ranking only on chunks where ACL `EXISTS` for at least one user group.
+## Architecture Notes
 
-This avoids expensive CTE-heavy joins in the hot search path and improves compatibility with pgvector ANN index pre-filtering.
+Search path uses:
 
-## Security Contract
+- tenant predicate on `document_chunks`
+- ACL authorization via `EXISTS` against `chunk_acl_groups`
+- vector ranking only after authorization eligibility is satisfied
 
-- Authenticated identity is authoritative (middleware / trusted auth context).
-- Request body `user_id` is only a consistency check, not a source of truth.
-- Tenant isolation is always enforced in SQL predicates.
-- ACL checks are evaluated in the same SQL statement as vector similarity.
-- All SQL is parameterized (`psycopg` bound parameters), avoiding SQL injection by dynamic concatenation.
-- Pydantic schemas use strict validation (`extra="forbid"`) to reject undeclared/bypass fields.
-
-## Tech Stack
-
-- Python 3.11+
-- FastAPI
-- psycopg3 + psycopg_pool
-- PostgreSQL + pgvector
-- Pydantic v2
-
-## Project Structure
-
-- `sql/001_schema.sql`: full schema + pgvector extension setup.
-- `sql/002_indexes.sql`: tenant/ACL/vector indexing strategy.
-- `sql/003_examples.sql`: parameterized SQL examples.
-- `sql/secure_search.sql`: canonical secure search SQL.
-- `sql/004_rls_future.sql`: optional future RLS defense-in-depth sketch.
-- `src/acl_search/api/`: FastAPI app composition and route handlers.
-- `src/acl_search/service/`: business orchestration and transaction boundaries.
-- `src/acl_search/repository/`: SQL/data-access layer.
-- `src/acl_search/auth/`: auth context adapter/dependencies.
-- `src/acl_search/embeddings/`: embedding provider abstraction + implementations.
-- `src/acl_search/core/`: shared config, DB lifecycle, errors, schemas.
-- `src/acl_search/main.py`: ASGI entrypoint.
-- `src/acl_search/config.py`, `db.py`, `errors.py`, `schemas.py`: backward-compatible re-export shims.
-- `tests/test_acl_search_service.py`: integration-style ACL + tenant tests.
-- `KT.md`: detailed knowledge transfer and full design rationale.
+This keeps policy and retrieval in one query and avoids unauthorized candidate leakage.
 
 ## Prerequisites
 
-- PostgreSQL with `pgvector` available.
-- Python 3.11+.
+- Python 3.11+ (`python3` command available)
+- PostgreSQL with `pgvector` (for local non-Docker mode) or Docker Desktop
+- Port `8000` available for API/UI
+- Port `5433` available if using Docker DB mapping
 
-## Quick Start
+## Quick Local Run (Without Docker)
+
+1. Create env and install:
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 ```
 
-## Database Bootstrap
-
-Run schema and indexes in order:
+2. Set env:
 
 ```bash
-psql "$ACL_SEARCH_DATABASE_URL" -f sql/001_schema.sql
-psql "$ACL_SEARCH_DATABASE_URL" -f sql/002_indexes.sql
+export ACL_SEARCH_DATABASE_URL='postgresql://postgres:postgres@localhost:5432/acl_search'
+export ACL_SEARCH_ENABLE_DEMO_EMBEDDINGS=true
 ```
 
-## Run the API
+3. Initialize DB:
+
+```bash
+python3 scripts/init_db.py
+python3 scripts/seed_demo.py
+```
+
+4. Run API:
 
 ```bash
 uvicorn acl_search.main:app --reload
 ```
 
-## Environment Variables
+5. Open UI:
 
-| Variable | Required | Default | What it means | DB impact |
-| --- | --- | --- | --- | --- |
-| `ACL_SEARCH_DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5432/acl_search` | Connection string used by the app to reach PostgreSQL. | Points the app to the target DB server, database name, user, and password. |
-| `ACL_SEARCH_EMBEDDING_DIMENSIONS` | No | `1536` | Expected vector length for ingest/search embeddings. | Must match the schema vector size (`document_chunks.embedding VECTOR(1536)`) unless you update schema + app together. |
-| `ACL_SEARCH_MAX_TOP_K` | No | `100` | Maximum allowed `top_k` per search request. | Limits result set size and protects DB from very heavy queries. |
-| `ACL_SEARCH_DB_POOL_MIN_SIZE` | No | `2` | Minimum open connections kept in the connection pool. | Keeps a baseline number of active DB connections ready. |
-| `ACL_SEARCH_DB_POOL_MAX_SIZE` | No | `20` | Maximum connections pool can open. | Upper cap on concurrent DB connections from this service instance. |
-| `ACL_SEARCH_DB_POOL_MAX_IDLE_SECONDS` | No | `60` | Idle timeout for pooled connections. | Closes unused DB connections after this period to reduce resource usage. |
+- [http://localhost:8000/](http://localhost:8000/)
 
-A sample file is provided at `.env.example`.
+The UI loads demo IDs by default and can ingest/search/update ACLs immediately.
 
-## API
+## Docker End-to-End Run
 
-Auth scope is expected from middleware. For local/dev you can pass:
-- `x-authenticated-user-id`
-- `x-authenticated-tenant-id`
-
-### API Parameter Reference
-
-All IDs are UUID strings unless noted otherwise.
-
-Common headers:
-
-| Header | Required | Description |
-| --- | --- | --- |
-| `content-type: application/json` | Yes | Request body is JSON. |
-| `x-authenticated-user-id` | Yes (dev mode) | Authenticated user identity. |
-| `x-authenticated-tenant-id` | Yes (dev mode) | Authenticated tenant scope. |
-
-Notes:
-- In production, auth middleware should set `request.state.auth_context` instead of using dev headers.
-- API does not trust request body for authorization scope.
-- Role-based admin authorization for management endpoints is not implemented yet; add RBAC before exposing publicly.
-
-### POST /ingest
-
-Example:
+1. Start stack:
 
 ```bash
-curl -X POST http://localhost:8000/ingest \
-  -H 'content-type: application/json' \
-  -H 'x-authenticated-user-id: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1' \
-  -H 'x-authenticated-tenant-id: 11111111-1111-1111-1111-111111111111' \
-  -d '{
-    "document_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1",
-    "chunk_index": 0,
-    "content": "Quarterly revenue increased 18%.",
-    "embedding": [0.1, 0.2, 0.3],
-    "token_count": 6,
-    "metadata": {"source": "q4-report"},
-    "acl_group_ids": ["cccccccc-cccc-cccc-cccc-ccccccccccc1"]
-  }'
+docker compose up --build -d
 ```
 
-Note: example embedding is shortened for readability; production length must equal `ACL_SEARCH_EMBEDDING_DIMENSIONS`.
-
-Request body parameters:
-
-| Field | Type | Required | Validation / meaning |
-| --- | --- | --- | --- |
-| `document_id` | UUID | Yes | Document that owns the chunk. Must exist in same tenant. |
-| `chunk_index` | integer | Yes | `>= 0`; order of chunk within document. |
-| `content` | string | Yes | Length `1..100000`; raw chunk text. |
-| `embedding` | array of numbers | Yes | Length must equal `ACL_SEARCH_EMBEDDING_DIMENSIONS`; all values must be finite numbers. |
-| `token_count` | integer or null | No | `>= 0`; optional token count metadata. |
-| `metadata` | object | No | Extra JSON metadata (default `{}`). |
-| `acl_group_ids` | array of UUID | Yes | At least one group; each group must exist in same tenant. |
-
-Response fields:
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `chunk_id` | integer | New DB chunk primary key. |
-| `assigned_group_ids` | array of UUID | ACL groups assigned to this chunk. |
-
-### POST /search
-
-Example (`query_embedding`):
+2. Initialize schema + seed demo data inside the API container:
 
 ```bash
-curl -X POST http://localhost:8000/search \
-  -H 'content-type: application/json' \
-  -H 'x-authenticated-user-id: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1' \
-  -H 'x-authenticated-tenant-id: 11111111-1111-1111-1111-111111111111' \
-  -d '{
-    "query_embedding": [0.1, 0.2, 0.3],
-    "top_k": 5
-  }'
+docker compose exec api python scripts/init_db.py
+docker compose exec api python scripts/seed_demo.py
 ```
 
-Example (`query_text`):
+3. Open UI:
 
-```bash
-curl -X POST http://localhost:8000/search \
-  -H 'content-type: application/json' \
-  -H 'x-authenticated-user-id: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1' \
-  -H 'x-authenticated-tenant-id: 11111111-1111-1111-1111-111111111111' \
-  -d '{
-    "query_text": "quarterly growth",
-    "top_k": 5
-  }'
-```
+- [http://localhost:8000/](http://localhost:8000/)
 
-Current behavior: `query_text` requires a real embedding provider to be injected; default stub returns `501 Not Implemented`.
+## Troubleshooting
 
-Request body parameters:
+- `Cannot connect to the Docker daemon`
+  - Start Docker Desktop, wait until it is fully running, then rerun `docker compose up --build -d`.
+- `bind: address already in use` for Postgres port
+  - Another local Postgres is already using that port.
+  - Stop the local Postgres process or change the host mapping in `docker-compose.yml` (for example `5434:5432`), then rerun compose.
+- `python: command not found`
+  - Use `python3` instead of `python`.
+- `password authentication failed for user "postgres"`
+  - You are likely connecting to a different local Postgres instance.
+  - For Docker mode, run DB scripts via `docker compose exec api ...` so the container uses the internal DB URL.
+- Clean reset for local Docker state
+  - `docker compose down -v && docker compose up --build -d`
 
-| Field | Type | Required | Validation / meaning |
-| --- | --- | --- | --- |
-| `user_id` | UUID or null | No | Optional consistency check only. If present and mismatched with auth user, request is rejected (`403`). |
-| `query_text` | string or null | Exactly one of `query_text` or `query_embedding` | Length `1..10000`; converted to embedding using provider. |
-| `query_embedding` | array of numbers or null | Exactly one of `query_text` or `query_embedding` | Used directly for vector search. |
-| `top_k` | integer | No | Default `10`; allowed range `1..100` and also capped by `ACL_SEARCH_MAX_TOP_K`. |
+## UI Walkthrough (What To Do in the UI)
 
-Response fields:
+Use this flow to verify end-to-end ACL behavior quickly.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `user_id` | UUID | Authenticated user used for search. |
-| `tenant_id` | UUID | Authenticated tenant used for search. |
-| `top_k` | integer | Requested/accepted limit. |
-| `results` | array | Authorized similar chunks only. |
+1. Open [http://localhost:8000/](http://localhost:8000/).
+2. In **Identity Context**, click **Load Demo IDs** and then **Save Identity**.
+3. Go to **Secure Search**, keep **Generate embedding from query text** enabled, enter:
+   - Query text: `quarterly revenue growth`
+   - Top K: `5`
+   Then click **Run Secure Search**.
+4. Expected (default demo user in finance group): results should include chunks with `chunk_index` `0` and `2` from seed data.
+5. Change **Identity Context > User ID** to:
+   - `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2` (operations user)
+   Click **Save Identity**, then run search again.
+6. Expected for operations user: results should include chunks with `chunk_index` `1` and `2`.
+7. Go to **Access Control Updates > Replace Chunk ACL Groups**:
+   - Chunk ID: take the `chunk_id` for the result row with `chunk_index=2`
+   - Group IDs: `cccccccc-cccc-cccc-cccc-ccccccccccc1` (finance only)
+   Click **Apply Chunk ACL**.
+8. Search again as operations user.
+9. Expected: shared chunk should disappear for operations user, proving ACL enforcement in search.
+10. Switch back to finance user (`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1`) and search again.
+11. Expected: finance user still sees finance-authorized chunks, including the updated shared chunk.
 
-Each item in `results`:
+Optional ingest validation:
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `chunk_id` | integer | Chunk primary key. |
-| `document_id` | UUID | Parent document ID. |
-| `chunk_index` | integer | Chunk position in document. |
-| `content` | string | Chunk text content. |
-| `metadata` | object | Stored JSON metadata. |
-| `similarity` | float | Similarity score derived from cosine distance. |
+1. In **Ingest Chunk**, enter content and finance group ID `cccccccc-cccc-cccc-cccc-ccccccccccc1`.
+2. Click **Ingest Chunk** (auto-embedding stays enabled).
+3. Search as operations user: new finance-only chunk should not appear.
+4. Search as finance user: new chunk should appear if semantically relevant.
 
-### PUT /users/{user_id}/groups
+## API Endpoints
 
-Replace all group memberships for a user in the authenticated tenant.
+- `POST /ingest`
+- `POST /search`
+- `PUT /users/{user_id}/groups`
+- `PUT /chunks/{chunk_id}/acl-groups`
+- `GET /health`
 
-Example:
+## Project Structure
 
-```bash
-curl -X PUT http://localhost:8000/users/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1/groups \
-  -H 'content-type: application/json' \
-  -H 'x-authenticated-user-id: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2' \
-  -H 'x-authenticated-tenant-id: 11111111-1111-1111-1111-111111111111' \
-  -d '{
-    "group_ids": [
-      "cccccccc-cccc-cccc-cccc-ccccccccccc1",
-      "cccccccc-cccc-cccc-cccc-ccccccccccc2"
-    ]
-  }'
-```
+- `src/acl_search/api/app.py`: FastAPI app, routes, UI mount.
+- `src/acl_search/repository/search_repository.py`: policy-critical SQL.
+- `src/acl_search/service/search_service.py`: transaction + orchestration.
+- `src/acl_search/ui/`: built-in frontend (`index.html`, `styles.css`, `app.js`).
+- `scripts/init_db.py`: schema/index bootstrap.
+- `scripts/seed_demo.py`: demo tenant/data seeding.
+- `sql/`: schema, indexing, secure search SQL, examples.
+- `docs/ER_DIAGRAM.md`: entity relationship diagram and tenant/ACL key notes.
+- `KT.md`: detailed knowledge transfer.
 
-Request body parameters:
+## Configuration
 
-| Field | Type | Required | Validation / meaning |
-| --- | --- | --- | --- |
-| `group_ids` | array of UUID | No | Full replacement list for user memberships. Empty array is allowed and removes all memberships. |
+Environment variables:
 
-Response fields:
+- `ACL_SEARCH_DATABASE_URL`
+- `ACL_SEARCH_EMBEDDING_DIMENSIONS` (default `1536`)
+- `ACL_SEARCH_MAX_TOP_K` (default `100`)
+- `ACL_SEARCH_DB_POOL_MIN_SIZE` (default `2`)
+- `ACL_SEARCH_DB_POOL_MAX_SIZE` (default `20`)
+- `ACL_SEARCH_DB_POOL_MAX_IDLE_SECONDS` (default `60`)
+- `ACL_SEARCH_ENABLE_DEMO_EMBEDDINGS` (default `false`)
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `user_id` | UUID | User whose memberships were updated. |
-| `tenant_id` | UUID | Tenant scope used for the update. |
-| `group_ids` | array of UUID | Final assigned group IDs. |
-
-### PUT /chunks/{chunk_id}/acl-groups
-
-Replace all ACL group grants for one chunk in the authenticated tenant.
-
-Example:
-
-```bash
-curl -X PUT http://localhost:8000/chunks/101/acl-groups \
-  -H 'content-type: application/json' \
-  -H 'x-authenticated-user-id: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2' \
-  -H 'x-authenticated-tenant-id: 11111111-1111-1111-1111-111111111111' \
-  -d '{
-    "group_ids": [
-      "cccccccc-cccc-cccc-cccc-ccccccccccc2"
-    ]
-  }'
-```
-
-Request body parameters:
-
-| Field | Type | Required | Validation / meaning |
-| --- | --- | --- | --- |
-| `group_ids` | array of UUID | No | Full replacement list for chunk ACL groups. Empty array is allowed and removes all ACL grants for the chunk. |
-
-Response fields:
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `chunk_id` | integer | Chunk whose ACL groups were updated. |
-| `tenant_id` | UUID | Tenant scope used for the update. |
-| `assigned_group_ids` | array of UUID | Final ACL groups assigned to the chunk. |
-
-## Testing
-
-Run:
+## Tests
 
 ```bash
 pytest -q
 ```
 
-For integration tests, set:
-
-- `TEST_DATABASE_URL`
-
-If required test dependencies or DB are missing, tests are skipped by design.
-
-## Performance Notes
-
-- Default ANN index in this project is HNSW (`vector_cosine_ops`).
-- Optional IVFFlat is documented in `sql/002_indexes.sql`.
-- ACL joins are optimized with tenant + group composite indexes.
-- For very large datasets, consider tenant partitioning and materialized permission maps.
-
-## Further Reading
-
-For full implementation transfer and file-by-file responsibilities, see `KT.md`.
+Integration tests use `TEST_DATABASE_URL`. If DB/dependencies are missing, tests skip by design.

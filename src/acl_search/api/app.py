@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from ..auth.dependencies import AuthContext, get_auth_context
 from ..core.config import Settings, get_settings
@@ -21,7 +24,11 @@ from ..core.schemas import (
     UpdateUserGroupsRequest,
     UpdateUserGroupsResponse,
 )
-from ..embeddings.provider import EmbeddingProvider, StubEmbeddingProvider
+from ..embeddings.provider import (
+    DeterministicDemoEmbeddingProvider,
+    EmbeddingProvider,
+    StubEmbeddingProvider,
+)
 from ..repository.search_repository import AclSearchRepository
 from ..service.search_service import AclSearchService
 
@@ -31,9 +38,15 @@ def create_app(
     embedding_provider: EmbeddingProvider | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
-    embedding_provider = embedding_provider or StubEmbeddingProvider(
-        dimensions=settings.embedding_dimensions
-    )
+    if embedding_provider is None:
+        if settings.enable_demo_embeddings:
+            embedding_provider = DeterministicDemoEmbeddingProvider(
+                dimensions=settings.embedding_dimensions
+            )
+        else:
+            embedding_provider = StubEmbeddingProvider(
+                dimensions=settings.embedding_dimensions
+            )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -53,6 +66,27 @@ def create_app(
         version="1.0.0",
         lifespan=lifespan,
     )
+
+    ui_dir = Path(__file__).resolve().parents[1] / "ui"
+    if ui_dir.exists():
+        app.mount("/ui", StaticFiles(directory=ui_dir), name="ui")
+
+        @app.get("/", include_in_schema=False)
+        def ui_root() -> RedirectResponse:
+            return RedirectResponse(url="/ui/index.html")
+    else:
+        @app.get("/", include_in_schema=False)
+        def root_fallback() -> dict[str, str]:
+            return {"service": "acl-semantic-search", "status": "ok"}
+
+    @app.get("/health")
+    def health() -> dict[str, str | int | bool]:
+        return {
+            "status": "ok",
+            "service": "acl-semantic-search",
+            "embedding_dimensions": settings.embedding_dimensions,
+            "demo_embeddings_enabled": settings.enable_demo_embeddings,
+        }
 
     def get_service(request: Request) -> AclSearchService:
         return request.app.state.service

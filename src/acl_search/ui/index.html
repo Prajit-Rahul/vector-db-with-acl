@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ACL Semantic Search Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow bg-glow-a"></div>
+    <div class="bg-glow bg-glow-b"></div>
+
+    <main class="layout">
+      <header class="hero reveal">
+        <p class="eyebrow">ACL + pgvector + multi-tenant security</p>
+        <h1>Semantic Retrieval Ops Console</h1>
+        <p class="subtitle">
+          Ingest tenant-scoped chunks, assign group ACLs, and run secure semantic search where authorization is enforced
+          in the same SQL statement as vector ranking.
+        </p>
+      </header>
+
+      <section class="identity reveal" id="identity-panel">
+        <h2>Identity Context</h2>
+        <p class="helper">
+          These values are sent as trusted auth headers for local development.
+        </p>
+
+        <label>
+          Tenant ID
+          <input id="tenant-id" type="text" placeholder="11111111-1111-1111-1111-111111111111" />
+        </label>
+
+        <label>
+          User ID
+          <input id="user-id" type="text" placeholder="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1" />
+        </label>
+
+        <div class="button-row">
+          <button id="save-identity" class="btn btn-primary" type="button">Save Identity</button>
+          <button id="load-demo" class="btn btn-muted" type="button">Load Demo IDs</button>
+        </div>
+        <p id="identity-save-status" class="identity-save-status" aria-live="polite">
+          Save status will appear here.
+        </p>
+      </section>
+
+      <section class="workspace reveal" id="ingest-panel">
+        <h2>Ingest Chunk</h2>
+        <p class="helper">
+          Embedding is auto-generated from chunk content by default for end-to-end demo flow.
+        </p>
+
+        <label>
+          Document ID
+          <input id="ingest-document-id" type="text" placeholder="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1" />
+        </label>
+
+        <div class="split">
+          <label>
+            Chunk Index
+            <input id="ingest-chunk-index" type="number" min="0" value="0" />
+          </label>
+
+          <label>
+            Token Count (optional)
+            <input id="ingest-token-count" type="number" min="0" placeholder="120" />
+          </label>
+        </div>
+
+        <label>
+          Chunk Content
+          <textarea id="ingest-content" rows="5" placeholder="Paste chunk text..."></textarea>
+        </label>
+
+        <label>
+          ACL Group IDs (comma-separated)
+          <input id="ingest-group-ids" type="text" placeholder="cccccccc-cccc-cccc-cccc-ccccccccccc1" />
+        </label>
+
+        <label>
+          Metadata JSON
+          <textarea id="ingest-metadata" rows="3" placeholder='{"source":"demo"}'></textarea>
+        </label>
+
+        <div class="checkbox-row">
+          <input id="ingest-auto-embed" type="checkbox" checked />
+          <label for="ingest-auto-embed">Generate embedding from content in browser (deterministic demo embedding)</label>
+        </div>
+
+        <label>
+          Embedding JSON (used when auto-generate is off)
+          <textarea id="ingest-embedding" rows="3" placeholder="[0.01, 0.02, ...]"></textarea>
+        </label>
+
+        <div class="button-row">
+          <button id="ingest-submit" class="btn btn-primary" type="button">Ingest Chunk</button>
+        </div>
+      </section>
+
+      <section class="workspace reveal" id="search-panel">
+        <h2>Secure Search</h2>
+        <p class="helper">
+          Sends query embedding to <code>/search</code>; backend enforces tenant + ACL in SQL.
+        </p>
+
+        <label>
+          Query Text
+          <textarea id="search-query-text" rows="3" placeholder="What changed in quarterly revenue?"></textarea>
+        </label>
+
+        <div class="split">
+          <label>
+            Top K
+            <input id="search-top-k" type="number" min="1" max="100" value="5" />
+          </label>
+
+          <div class="checkbox-row checkbox-inline">
+            <input id="search-auto-embed" type="checkbox" checked />
+            <label for="search-auto-embed">Generate embedding from query text</label>
+          </div>
+        </div>
+
+        <label>
+          Query Embedding JSON (used when auto-generate is off)
+          <textarea id="search-embedding" rows="3" placeholder="[0.01, 0.02, ...]"></textarea>
+        </label>
+
+        <div class="button-row">
+          <button id="search-submit" class="btn btn-primary" type="button">Run Secure Search</button>
+        </div>
+      </section>
+
+      <section class="workspace reveal" id="control-panel">
+        <h2>Access Control Updates</h2>
+        <p class="helper">
+          Use these endpoints to update memberships and ACL assignments for verification scenarios.
+        </p>
+
+        <div class="control-grid">
+          <div>
+            <h3>Replace User Groups</h3>
+            <label>
+              Target User ID
+              <input id="acl-user-id" type="text" placeholder="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1" />
+            </label>
+            <label>
+              Group IDs (comma-separated)
+              <input id="acl-user-groups" type="text" placeholder="cccccccc-cccc-cccc-cccc-ccccccccccc1" />
+            </label>
+            <button id="replace-user-groups" class="btn btn-muted" type="button">Apply User Groups</button>
+          </div>
+
+          <div>
+            <h3>Replace Chunk ACL Groups</h3>
+            <label>
+              Chunk ID
+              <input id="acl-chunk-id" type="number" min="1" placeholder="101" />
+            </label>
+            <label>
+              Group IDs (comma-separated)
+              <input id="acl-chunk-groups" type="text" placeholder="cccccccc-cccc-cccc-cccc-ccccccccccc1" />
+            </label>
+            <button id="replace-chunk-acl" class="btn btn-muted" type="button">Apply Chunk ACL</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="results reveal" id="results-panel">
+        <h2>Results</h2>
+        <div id="result-meta" class="result-meta">No query has been run yet.</div>
+        <div id="result-list" class="result-list"></div>
+      </section>
+
+      <section class="events reveal" id="events-panel">
+        <h2>Event Log</h2>
+        <pre id="event-log" aria-live="polite"></pre>
+      </section>
+    </main>
+
+    <script src="/ui/app.js" defer></script>
+  </body>
+</html>

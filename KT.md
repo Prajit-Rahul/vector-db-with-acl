@@ -172,6 +172,8 @@ Future scaling options:
   - Example runtime configuration values.
 - `pyproject.toml`
   - Project metadata, dependencies, packaging, and pytest config.
+- `docs/ER_DIAGRAM.md`
+  - Mermaid ER diagram for schema relationships and tenant-isolation constraints.
 
 ### SQL Files (`/sql`)
 
@@ -266,3 +268,48 @@ Security properties:
 - Add observability:
   - structured request logs (without sensitive payloads)
   - Add load testing and index tuning for target tenant/data scale.
+
+## 11) UI + End-to-End Implementation (This Branch)
+
+### What was added
+
+- Built-in frontend served by FastAPI from `src/acl_search/ui/`.
+- Root route now redirects to `/ui/index.html`.
+- Added `GET /health` for runtime readiness checks.
+- Added deterministic browser-side embedding generation in the UI for immediate ingest/search demos.
+- Added deterministic server-side embedding provider (`DeterministicDemoEmbeddingProvider`) behind config flag.
+- Added DB bootstrap and demo seeding scripts:
+  - `scripts/init_db.py`
+  - `scripts/seed_demo.py`
+- Added containerized dev stack:
+  - `Dockerfile`
+  - `docker-compose.yml`
+
+### Why deterministic embeddings were introduced
+
+For true end-to-end local demos, users need to ingest and search without integrating an external embedding model first. Deterministic embeddings provide:
+
+- stable vectors across runs
+- consistent search behavior for demos/tests
+- no external API dependency
+
+This is controlled by `ACL_SEARCH_ENABLE_DEMO_EMBEDDINGS` and remains optional.
+
+### UI responsibilities
+
+The console supports:
+
+- identity context editing (tenant/user IDs for auth headers)
+- chunk ingest with ACL group assignment
+- secure semantic search execution
+- user group replacement (`PUT /users/{user_id}/groups`)
+- chunk ACL replacement (`PUT /chunks/{chunk_id}/acl-groups`)
+- result rendering and event logs
+
+### End-to-end run flow
+
+1. Start DB/API (local Python or Docker).
+2. Apply schema/index scripts.
+3. Seed demo tenant/users/groups/document/chunks.
+4. Open UI at `/`.
+5. Run ingest + search + ACL updates and validate behavior live.

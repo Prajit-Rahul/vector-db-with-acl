@@ -1,0 +1,35 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: acl-search-db
+    environment:
+      POSTGRES_DB: acl_search
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d acl_search"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: acl-search-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ACL_SEARCH_DATABASE_URL: postgresql://postgres:postgres@db:5432/acl_search
+      ACL_SEARCH_EMBEDDING_DIMENSIONS: 1536
+      ACL_SEARCH_ENABLE_DEMO_EMBEDDINGS: "true"
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
