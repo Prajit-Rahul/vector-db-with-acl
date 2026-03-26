@@ -13,6 +13,8 @@ pip install vecgate[all]     # everything
 
 ## Quick Start
 
+> **Note:** The SDK entry points (`VecGate`, `AsyncVecGate`) will be available once all tasks are complete. The snippet below shows the intended API.
+
 ```python
 from vecgate import VecGate
 
