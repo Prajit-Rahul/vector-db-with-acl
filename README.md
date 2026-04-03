@@ -7,6 +7,19 @@ Production-grade Python backend for tenant-isolated, ACL-aware semantic search o
 This service ensures users can only semantic-search chunks they are authorized to access.
 Authorization is enforced inside the SQL search query, not as post-filtering in application code.
 
+## Core Keywords
+
+`Python` `FastAPI` `PostgreSQL` `pgvector` `Vector Database` `Semantic Search` `ACL` `RBAC`
+`Multi-Tenant Architecture` `Secure Backend` `SQL Optimization` `HNSW` `REST API`
+`Pydantic v2` `psycopg3` `Transaction Safety` `Production-Grade API`
+
+## Impact Highlights
+
+- Built a tenant-isolated, ACL-aware semantic search backend for secure retrieval at scale.
+- Enforced authorization directly in SQL query execution to prevent data leakage paths.
+- Improved query efficiency with tenant pre-filtering + ACL `EXISTS` checks for ANN compatibility.
+- Added strict schema validation, parameterized SQL, and integration-style security tests.
+
 ## Recent Architecture Update
 
 Search authorization was optimized to use tenant pre-filtering plus `WHERE EXISTS` ACL checks against `chunk_acl_groups`.
