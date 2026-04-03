@@ -2,16 +2,12 @@
 
 Production-grade Python backend for tenant-isolated, ACL-aware semantic search on PostgreSQL + pgvector.
 
+**Keywords:** `Python` `FastAPI` `PostgreSQL` `pgvector` `Vector Database` `Semantic Search` `ACL` `RBAC` `Multi-Tenant Architecture` `Secure Backend` `SQL Optimization` `HNSW` `REST API` `Pydantic v2` `psycopg3` `Transaction Safety` `Production-Grade API`
+
 ## Overview
 
 This service ensures users can only semantic-search chunks they are authorized to access.
 Authorization is enforced inside the SQL search query, not as post-filtering in application code.
-
-## Core Keywords
-
-`Python` `FastAPI` `PostgreSQL` `pgvector` `Vector Database` `Semantic Search` `ACL` `RBAC`
-`Multi-Tenant Architecture` `Secure Backend` `SQL Optimization` `HNSW` `REST API`
-`Pydantic v2` `psycopg3` `Transaction Safety` `Production-Grade API`
 
 ## Impact Highlights
 
